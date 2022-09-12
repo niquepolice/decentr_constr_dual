@@ -17,8 +17,13 @@ def lambda_min(M):
 def lambda_min_plus(M):
     """Returns minimal positive eigenvalue"""
     eigvals, eigvecs = np.linalg.eigh(M)
-    lambda_min_plus = min([n for n in eigvals if n > 1e-6])
-    return lambda_min_plus
+    tol = 1e-6
+
+    lam_min_plus = eigvals[eigvals > tol].min()
+    small_nonzero = eigvals[(eigvals <= tol) & (eigvals > 0)]
+    # if small_nonzero.size > 0:
+    #     print("note: small nonzero eigenvals interpreted as 0:", small_nonzero)
+    return lam_min_plus
 
 
 def getW(nodes: int) -> np.ndarray:
