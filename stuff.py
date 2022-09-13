@@ -17,7 +17,7 @@ import utils
 
 
 class Model:
-    def __init__(self, nodes, dim, theta_f=0.9):
+    def __init__(self, nodes, dim, B_rank=1, theta_f=0.9):
         # G = nx.random_graphs.erdos_renyi_graph(9, 1,   directed=False)
         # W = nx.adjacency_matrix(G)
         # D = np.diag(np.sum(np.array(W.todense()), axis=1))
@@ -33,8 +33,8 @@ class Model:
         self.d = [np.random.random(dim) for _ in range(nodes)]
         self.bd = np.hstack(self.d)
 
-        cm = np.random.randint(10, size=(dim, 1))
-        self.B = np.dot(cm, cm.T)  # Why symmetric, rank 1 ?
+        cm = np.random.randint(10, size=(dim, B_rank))
+        self.B = np.dot(cm, cm.T)  # Why symmetric ?
 
         beta_min_plus = utils.lambda_min_plus(self.B)  # works if B is symmetric
         w_min_plus = utils.lambda_min_plus(self.W)
@@ -149,9 +149,10 @@ def err(bx, model):
     return np.linalg.norm(model.A @ bx)
 
 
-def crit(bx, model, err_init, rtol=1e-3):
-    return err(bx, model) < err_init * rtol
-
+def crit(bx, model, err_init, f_star, rtol=1e-5):
+    # return err(bx, model) < err_init * rtol
+    # return err(bx, model) < atol
+    return abs(model.f(bx) - f_star) / abs(err_init) < rtol
 
 def get_apdm_params(model):
     mu_x, mu_xy, L_x, L_xy = model.get_mu_L()
@@ -223,6 +224,7 @@ def APDM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
     f_err = np.zeros(iters)
     cons_err = np.zeros(iters)
     f_star, x_star = model.solution
+    err_init = model.f(x) - f_star
     print("f_star", f_star)
 
     ATA = model.A.T @ model.A
@@ -255,7 +257,7 @@ def APDM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
         cons_err[i] = np.linalg.norm(model.A @ x)
 
         if use_crit:
-            if crit(x_f, model, cons_err[0]):
+            if crit(x_f, model, err_init, f_star):
                 break
 
     return x_f, np.abs(f_err), cons_err
@@ -364,8 +366,9 @@ def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
     f_err = np.zeros(iters)
     cons_err = np.zeros(iters)
     f_star, x_star = model.solution
+    err_init = model.f(np.zeros(model.dim * model.nodes)) - f_star
 
-    print("f_star", f_star)
+    print("f_star", f_star, "err init", err_init)
 
     for i in range(iters):
         bu_ = bu + beta * (bu - bu_prev)
@@ -377,7 +380,7 @@ def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
         cons_err[i] = np.linalg.norm(model.A @ bx)
 
         if use_crit:
-            if crit(bx, model, cons_err[0]):
+            if crit(bx, model, err_init, f_star):
                 break
 
     return bx, np.abs(f_err), cons_err
@@ -411,6 +414,7 @@ def LDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
     f_err = np.zeros(iters)
     cons_err = np.zeros(iters)
     f_star, x_star = model.solution
+    err_init = model.f(np.zeros(model.dim * model.nodes)) - f_star
 
     print("f_star", f_star)
 
@@ -425,7 +429,7 @@ def LDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
         cons_err[i] = np.linalg.norm(bWbE @ bt)
 
         if use_crit:
-            if crit(bx, model, cons_err[0]):
+            if crit(bx, model, err_init, f_star):
                 break
 
     return bx, np.abs(f_err), cons_err
