@@ -1,0 +1,6 @@
+cvxpy
+networkx
+numpy
+scipy
+matplotlib
+jupyter
