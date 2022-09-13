@@ -6,8 +6,6 @@ import scipy
 
 import scipy.linalg as sla
 
-# import networkx as nx
-
 import utils
 
 # nodes = 2
@@ -17,15 +15,14 @@ import utils
 
 
 class Model:
-    def __init__(self, nodes, dim, B_rank=1, theta_f=0.9):
-        # G = nx.random_graphs.erdos_renyi_graph(9, 1,   directed=False)
-        # W = nx.adjacency_matrix(G)
-        # D = np.diag(np.sum(np.array(W.todense()), axis=1))
-        # L = D - W  # Laplacian
+    def __init__(self, nodes, dim, B_rank=1, theta_f=0.9, graph="ring", edge_prob=None):
         self.nodes, self.dim = nodes, dim
         self.theta_f = theta_f
 
-        self.W = utils.getW(nodes)  # graph Laplacian
+        if graph == "ring":
+            self.W = utils.get_ring_W(nodes)  # graph Laplacian
+        elif graph == "erdos-renyi":
+            self.W = utils.get_ER_W(nodes, edge_prob)
 
         self.C = np.random.random((nodes, dim, dim))
         self.bC = scipy.linalg.block_diag(*[self.C[i] for i in range(nodes)])
@@ -433,3 +430,8 @@ def LDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
                 break
 
     return bx, np.abs(f_err), cons_err
+
+def test_smth():
+    iters = 100
+    model = Model(nodes=50, dim=20, B_rank=1, graph="erdos-renyi", edge_prob=0.1)
+    x_res, f_err, cons_err = APDM(iters, model)

@@ -26,7 +26,7 @@ def lambda_min_plus(M):
     return lam_min_plus
 
 
-def getW(nodes: int) -> np.ndarray:
+def get_ring_W(nodes: int) -> np.ndarray:
     """Returns Laplacian of the ring graph"""
     if nodes == 1:
         return np.array([[0]])
@@ -36,3 +36,31 @@ def getW(nodes: int) -> np.ndarray:
     w1[0], w1[-1], w1[1] = 2, -1, -1
     W = np.array([np.roll(w1, i) for i in range(nodes)])
     return W
+
+
+def get_ER_W(nodes: int, p: float) -> np.ndarray:
+    """Returns Laplacian of the Erdos-Renyi graph"""
+    import networkx as nx
+
+    graph = nx.random_graphs.erdos_renyi_graph(nodes, p, directed=False, seed=np.random)
+    M = nx.to_numpy_array(graph)
+    D = np.diag(np.sum(M, axis=1))
+    print("mean degree:", D.sum() / nodes)
+    W = D - M  # Laplacian
+    return W
+
+
+def test_ER():
+    assert np.all(get_ER_W(1, 1) == get_ring_W(1))
+    assert np.all(get_ER_W(2, 1) == get_ring_W(2))
+    assert np.all(get_ER_W(3, 1) == get_ring_W(3))
+
+    for n in range(2, 10):
+        for _ in range(5):
+            p = np.random.random()
+            W = get_ER_W(n, p)
+            assert W.shape == (n, n)
+            assert np.all(W.T == W)
+            assert np.all(W @ np.ones(n) == np.zeros(n))
+            assert np.all((W >= 0) | (W == -1))
+
