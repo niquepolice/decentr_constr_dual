@@ -39,10 +39,15 @@ def get_ring_W(nodes: int) -> np.ndarray:
 
 
 def get_ER_W(nodes: int, p: float) -> np.ndarray:
-    """Returns Laplacian of the Erdos-Renyi graph"""
+    """Returns Laplacian of a connected Erdos-Renyi graph"""
     import networkx as nx
 
-    graph = nx.random_graphs.erdos_renyi_graph(nodes, p, directed=False, seed=np.random)
+    assert p > 0
+    while True:
+        graph = nx.random_graphs.erdos_renyi_graph(nodes, p, directed=False, seed=np.random)
+        if nx.is_connected(graph):
+            break
+
     M = nx.to_numpy_array(graph)
     D = np.diag(np.sum(M, axis=1))
     print("mean degree:", D.sum() / nodes)
