@@ -15,7 +15,8 @@ def lambda_min(M):
 
 
 def lambda_min_plus(M):
-    """Returns minimal positive eigenvalue"""
+    """Returns minimal positive eigenvalue. If something dont like to converge,
+    probably this function treats small lambdas as nonzero when it shouldn't. Or vice-versa. TODO: FIX"""
     eigvals, eigvecs = np.linalg.eigh(M)
     tol = 1e-6
 

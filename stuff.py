@@ -33,13 +33,14 @@ class Model:
         cm = np.random.randint(10, size=(dim, B_rank))
         self.B = np.dot(cm, cm.T)  # Why symmetric ?
 
+        assert np.allclose(self.B.T, self.B)
         beta_min_plus = utils.lambda_min_plus(self.B)  # works if B is symmetric
         w_min_plus = utils.lambda_min_plus(self.W)
-        gamma_x = beta_min_plus / w_min_plus
+        self.gamma_x = beta_min_plus / w_min_plus
 
         self.gW = (
-            gamma_x * self.W
-        )  # scaling matrix W by gamma (simple preconditioning of A)
+            self.gamma_x * self.W
+        )  # scaling matrix W by gamma (simple preconditioning of A)  # FIXME: dont scale in locally dual approach
         Im = np.identity(nodes)
         Id = np.identity(dim)
         self.bB, self.bW = np.kron(Im, self.B), np.kron(self.gW, Id)
@@ -94,14 +95,20 @@ class Model:
             self._bdT_bC = self.bd.T @ self.bC
         return self._bdT_bC
 
+    def get_ATA_lmax_lminp(self):
+        lmax = utils.lambda_max(self.B.T @ self.B) + (self.gamma_x * utils.lambda_max(self.W)) ** 2
+        lminp = min(utils.lambda_min_plus(self.B.T @ self.B), (self.gamma_x * utils.lambda_min_plus(self.W)) ** 2)
+        return lmax, lminp
+
     def get_mu_L(self):
         L_x = utils.lambda_max(self.bC.T @ self.bC) + self.theta_f
         mu_x = utils.lambda_min(self.bC.T @ self.bC) + self.theta_f
 
         print("cond", L_x / mu_x)
 
-        L_xy = np.sqrt(utils.lambda_max(self.A.T @ self.A))
-        mu_xy = np.sqrt(utils.lambda_min_plus(self.A @ self.A.T))
+        lmax, lminp = self.get_ATA_lmax_lminp()
+        L_xy = np.sqrt(lmax)
+        mu_xy = np.sqrt(lminp)
 
         return mu_x, mu_xy, L_x, L_xy
 
@@ -341,8 +348,8 @@ def GDM(iters: int, model: Model, eta=None, use_crit=False):
 
 def get_globally_dual_accelerated_params(model):
     mu_x, mu_xy, L_x, L_xy = model.get_mu_L()
-    L = utils.lambda_max(model.A.T @ model.A) / mu_x
-    mu = utils.lambda_min_plus(model.A.T @ model.A) / L_x
+    L = L_xy ** 2 / mu_x
+    mu = mu_xy ** 2 / L_x
     print(f"Dual problem params: L={L}, mu={mu}, L/mu={L/mu}")
 
     return 1 / L, (L**0.5 - mu**0.5) / (L**0.5 + mu**0.5)
@@ -386,8 +393,8 @@ def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
 def get_locally_dual_accelerated_params(model):
     mu_t = utils.lambda_min(model.locally_dual_Q)
     L_t = utils.lambda_max(model.locally_dual_Q)
-    L = utils.lambda_max(model.bW.T @ model.bW) / mu_t
-    mu = utils.lambda_min_plus(model.bW.T @ model.bW) / L_t
+    L = (utils.lambda_max(model.W) * model.gamma_x) ** 2 / mu_t
+    mu = (utils.lambda_min_plus(model.W) * model.gamma_x) ** 2 / L_t
     print(f"Dual problem params: L={L}, mu={mu}, L/mu={L / mu}")
 
     return 1 / L, (L**0.5 - mu**0.5) / (L**0.5 + mu**0.5)
