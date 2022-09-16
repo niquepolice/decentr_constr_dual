@@ -153,10 +153,10 @@ def err(bx, model):
     return np.linalg.norm(model.A @ bx)
 
 
-def crit(bx, model, err_init, f_star, rtol=1e-5):
+def crit(bx, model, err_init, f_star, atol=1e-3):
     # return err(bx, model) < err_init * rtol
-    # return err(bx, model) < atol
-    return abs(model.f(bx) - f_star) / abs(err_init) < rtol
+    return err(bx, model) < atol
+    # return abs(model.f(bx) - f_star) / abs(err_init) < rtol
 
 def get_apdm_params(model):
     mu_x, mu_xy, L_x, L_xy = model.get_mu_L()
@@ -196,7 +196,7 @@ def get_apdm_params(model):
 #     print(f"Dual problem params: L={L}, mu={mu}, L/mu={L/mu}")
 
 
-def APDM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False) -> (np.ndarray, np.ndarray):
+def APDM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False, accuracy=None) -> (np.ndarray, np.ndarray):
     if params is not None:
         x_params, y_params = params
     else:
@@ -261,7 +261,7 @@ def APDM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
         cons_err[i] = np.linalg.norm(model.A @ x)
 
         if use_crit:
-            if crit(x_f, model, err_init, f_star):
+            if crit(x_f, model, err_init, f_star, accuracy):
                 break
 
     return x_f, np.abs(f_err), cons_err
@@ -355,7 +355,7 @@ def get_globally_dual_accelerated_params(model):
     return 1 / L, (L**0.5 - mu**0.5) / (L**0.5 + mu**0.5)
 
 
-def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False):
+def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False, accuracy=None):
     """Globally dual accelerated method (Nesterov's accelerated method)"""
     if params is None:
         eta, beta = get_globally_dual_accelerated_params(model)
@@ -384,7 +384,7 @@ def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
         cons_err[i] = np.linalg.norm(model.A @ bx)
 
         if use_crit:
-            if crit(bx, model, err_init, f_star):
+            if crit(bx, model, err_init, f_star, accuracy):
                 break
 
     return bx, np.abs(f_err), cons_err
@@ -400,8 +400,8 @@ def get_locally_dual_accelerated_params(model):
     return 1 / L, (L**0.5 - mu**0.5) / (L**0.5 + mu**0.5)
 
 
-def LDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False):
-    """Locally dual accelerated method (Neseterov accelerated gradient method)"""
+def LDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False, accuracy=None):
+    """Locally dual accelerated method (Nesterov accelerated gradient method)"""
     if params is None:
         eta, beta = get_locally_dual_accelerated_params(model)
     else:
@@ -433,7 +433,7 @@ def LDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
         cons_err[i] = np.linalg.norm(bWbE @ bt)
 
         if use_crit:
-            if crit(bx, model, err_init, f_star):
+            if crit(bx, model, err_init, f_star, accuracy):
                 break
 
     return bx, np.abs(f_err), cons_err
