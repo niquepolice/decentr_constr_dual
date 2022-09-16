@@ -185,7 +185,7 @@ def get_apdm_params(model):
     return x_params, y_params
 
 
-# def APDM_rate_const(model):
+# def APDG_rate_const(model):
 #     """Calculates constant C, such that N <= O(C ln(1/eps)), and what is left under big-O is a constant
 #     which is the same for all problems in the class considered"""
 #     mu_x, mu_xy, L_x, L_xy = model.get_mu_L()
@@ -196,7 +196,7 @@ def get_apdm_params(model):
 #     print(f"Dual problem params: L={L}, mu={mu}, L/mu={L/mu}")
 
 
-def APDM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False, accuracy=None) -> (np.ndarray, np.ndarray):
+def APDG(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False, accuracy=None) -> (np.ndarray, np.ndarray):
     if params is not None:
         x_params, y_params = params
     else:
@@ -441,4 +441,4 @@ def LDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
 def test_smth():
     iters = 100
     model = Model(nodes=50, dim=20, B_rank=1, graph="erdos-renyi", edge_prob=0.1)
-    x_res, f_err, cons_err = APDM(iters, model)
+    x_res, f_err, cons_err = APDG(iters, model)
