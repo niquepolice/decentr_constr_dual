@@ -356,7 +356,9 @@ def get_globally_dual_accelerated_params(model):
 
 
 def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=False, accuracy=None):
-    """Globally dual accelerated method (Nesterov's accelerated method)"""
+    """Globally dual accelerated method (Nesterov's accelerated method)
+        To allow for application of Chebyshev acceleration the substitution A^T u -> p, A^T u_ -> q is used
+    """
     if params is None:
         eta, beta = get_globally_dual_accelerated_params(model)
     else:
@@ -364,8 +366,7 @@ def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
 
     print(f"globally dual stepsize: {eta}, momentum: {beta}")
 
-    bu = np.zeros(model.bB.shape[0] + model.bW.shape[0])
-    bu_prev = bu.copy()
+    bp = bp_prev = np.zeros(model.A.T.shape[0])
 
     f_err = np.zeros(iters)
     cons_err = np.zeros(iters)
@@ -374,11 +375,13 @@ def GDAM(iters: int, model: Model, params: Optional[tuple] = None, use_crit=Fals
 
     print("f_star", f_star, "err init", err_init)
 
+    ATA = model.A.T @ model.A
+
     for i in range(iters):
-        bu_ = bu + beta * (bu - bu_prev)
-        bx = model.Fstar_grad(model.A.T @ bu_)
-        bu_prev = bu
-        bu = bu_ - eta * model.A @ bx
+        bq = bp + beta * (bp - bp_prev)
+        bx = model.Fstar_grad(bq)
+        bp_prev = bp
+        bp = bq - eta * ATA @ bx
 
         f_err[i] = model.f(bx) - f_star
         cons_err[i] = np.linalg.norm(model.A @ bx)
